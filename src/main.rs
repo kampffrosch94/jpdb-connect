@@ -2,6 +2,7 @@ use warp::Filter;
 use warp::hyper::body::Bytes;
 use serde::Deserialize;
 use serde::Serialize;
+use anyhow::Result;
 
 
 #[derive(Serialize, Debug)]
@@ -81,7 +82,7 @@ async fn main() {
                     answer.version_downgrade()
                 } else {
                     serde_json::to_string(answer).unwrap()
-                }
+                };
             });
 
 
@@ -109,7 +110,7 @@ fn handle_action(action: &AnkiConnectAction) -> Response {
         "modelFieldNames" => format!(r#"["word", "reading", "sentence"]"#),
         "addNote" => {
             let field = &action.params.as_ref().unwrap().note.as_ref().unwrap().fields;
-            add_note(field);
+            add_note(field).unwrap();
             format!(r#"12345"#) // TODO some id
         }
         "guiBrowse" => {
@@ -130,8 +131,11 @@ fn handle_action(action: &AnkiConnectAction) -> Response {
     }.into()
 }
 
-fn add_note(s: &Fields) {
+fn add_note(s: &Fields) -> Result<()> {
     eprintln!("add W='{}' R='{}' S='{}'", s.word, s.reading, s.sentence);
 
+    let url = format!("https://jpdb.io/search?q={}&lang=english#a", s.word);
+    open::that(url)?;
+    Ok(())
     // a[href*="人間/にんげん"]
 }
