@@ -2,8 +2,11 @@ use warp::Filter;
 use warp::hyper::body::Bytes;
 use serde::Deserialize;
 use serde::Serialize;
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
+use reqwest::Client;
 
+const DOMAIN: &str = "jpdb.io";
+const URL_PREFIX: &str = "https://";
 
 #[derive(Serialize, Debug)]
 struct Response {
@@ -72,12 +75,12 @@ async fn main() {
     let bytes =
         warp::any().
             and(warp::body::bytes())
-            .map(|body: Bytes| {
+            .then(|body: Bytes| async move{
                 let s: String = String::from_utf8(body.slice(..).to_vec()).unwrap();
                 eprintln!("{}", s);
                 let a: AnkiConnectAction = serde_json::from_str(&s).unwrap();
 
-                let answer = &handle_action(&a);
+                let answer = &handle_action(&a).await;
                 return if a.version == 2 {
                     answer.version_downgrade()
                 } else {
@@ -101,7 +104,7 @@ async fn main() {
 }
 
 
-fn handle_action(action: &AnkiConnectAction) -> Response {
+async fn handle_action(action: &AnkiConnectAction) -> Response {
     eprintln!("{:?}", &action);
     match action.action.as_str() {
         "version" => format!("6"),
@@ -110,7 +113,7 @@ fn handle_action(action: &AnkiConnectAction) -> Response {
         "modelFieldNames" => format!(r#"["word", "reading", "sentence"]"#),
         "addNote" => {
             let field = &action.params.as_ref().unwrap().note.as_ref().unwrap().fields;
-            add_note(field).unwrap();
+            add_note(field).await.unwrap();
             format!(r#"12345"#) // TODO some id
         }
         "guiBrowse" => {
@@ -131,11 +134,34 @@ fn handle_action(action: &AnkiConnectAction) -> Response {
     }.into()
 }
 
-fn add_note(s: &Fields) -> Result<()> {
+async fn add_note(s: &Fields) -> Result<()> {
     eprintln!("add W='{}' R='{}' S='{}'", s.word, s.reading, s.sentence);
 
     let url = format!("https://jpdb.io/search?q={}&lang=english#a", s.word);
+
+
+    let client = Client::builder()
+        //.cookie_store(true)
+        //.cookie_provider(jar.into())
+        .build()?;
+
+    let req = client.get(&url).build()?;
+    let body = client.execute(req).await?.text().await?;
+    let document = scraper::Html::parse_document(&body);
+    let selector = scraper::Selector::parse(&format!(r#"a[href*="{}/{}"]"#, s.word, s.reading))
+        .map_err(|e| anyhow!("{e:?}"))?;
+    let selected = document
+        .select(&selector)
+        .next();
+
+    let url = if let Some(selected) = selected {
+        let path = selected.value().attr("href").context("should be impossible")?;
+        format!("{}{}{}", URL_PREFIX, DOMAIN, path)
+    } else {
+        url
+    };
+
+
     open::that(url)?;
     Ok(())
-    // a[href*="人間/にんげん"]
 }
