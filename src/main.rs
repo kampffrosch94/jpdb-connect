@@ -161,7 +161,7 @@ async fn add_note(s: &Fields) -> Result<()> {
         url
     };
 
-
+    let url = url.split("?").next().unwrap(); // cut off parameters and jump points
     open::that(url)?;
     Ok(())
 }
