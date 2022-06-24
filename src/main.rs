@@ -1,9 +1,9 @@
-use warp::Filter;
-use warp::hyper::body::Bytes;
+use anyhow::{anyhow, Result};
+use reqwest::Client;
 use serde::Deserialize;
 use serde::Serialize;
-use anyhow::{anyhow, Context, Result};
-use reqwest::Client;
+use warp::hyper::body::Bytes;
+use warp::Filter;
 
 const DOMAIN: &str = "jpdb.io";
 const URL_PREFIX: &str = "https://";
@@ -42,14 +42,12 @@ impl Response {
     }
 }
 
-
 #[derive(Deserialize, Debug)]
 struct AnkiConnectAction {
     action: String,
     version: i64,
     params: Option<Params>,
 }
-
 
 #[derive(Deserialize, Debug)]
 struct Params {
@@ -72,47 +70,44 @@ struct Fields {
 
 #[tokio::main]
 async fn main() {
-    let bytes =
-        warp::any().
-            and(warp::body::bytes())
-            .then(|body: Bytes| async move{
-                let s: String = String::from_utf8(body.slice(..).to_vec()).unwrap();
-                eprintln!("{}", s);
-                let a: AnkiConnectAction = serde_json::from_str(&s).unwrap();
+    let bytes = warp::any()
+        .and(warp::body::bytes())
+        .then(|body: Bytes| async move {
+            let s: String = String::from_utf8(body.slice(..).to_vec()).unwrap();
+            eprintln!("{}", s);
+            let a: AnkiConnectAction = serde_json::from_str(&s).unwrap();
 
-                let answer = &handle_action(&a).await;
-                return if a.version == 2 {
-                    answer.version_downgrade()
-                } else {
-                    serde_json::to_string(answer).unwrap()
-                };
-            });
+            let answer = &handle_action(&a).await;
+            return if a.version == 2 {
+                answer.version_downgrade()
+            } else {
+                serde_json::to_string(answer).unwrap()
+            };
+        });
 
-
-    warp::serve(bytes.
-        with(warp::log::custom(|info| {
-            eprintln!(
-                "{} {} {}",
-                info.method(),
-                info.path(),
-                info.status(),
-            );
-        }))
-    )
-        .run(([127, 0, 0, 1], 3030))
-        .await;
+    warp::serve(bytes.with(warp::log::custom(|info| {
+        eprintln!("{} {} {}", info.method(), info.path(), info.status(),);
+    })))
+    .run(([127, 0, 0, 1], 3030))
+    .await;
 }
 
-
 async fn handle_action(action: &AnkiConnectAction) -> Response {
-    eprintln!("{:?}", &action);
+    eprintln!("{}", &action.action);
     match action.action.as_str() {
         "version" => format!("6"),
         "deckNames" => format!(r#"["jpdb"]"#),
         "modelNames" => format!(r#"["jpdb"]"#),
         "modelFieldNames" => format!(r#"["word", "reading", "sentence"]"#),
         "addNote" => {
-            let field = &action.params.as_ref().unwrap().note.as_ref().unwrap().fields;
+            let field = &action
+                .params
+                .as_ref()
+                .unwrap()
+                .note
+                .as_ref()
+                .unwrap()
+                .fields;
             add_note(field).await.unwrap();
             format!(r#"12345"#) // TODO some id
         }
@@ -123,7 +118,18 @@ async fn handle_action(action: &AnkiConnectAction) -> Response {
         }
         "canAddNotes" => {
             // TODO return vec of bools
-            format!(r#"[true]"#)
+            let v = action
+                .params
+                .as_ref()
+                .unwrap()
+                .notes
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|_| "true".to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
+            format!(r#"[{}]"#, v)
         }
         _ => {
             // multi
@@ -131,14 +137,14 @@ async fn handle_action(action: &AnkiConnectAction) -> Response {
             eprintln!("{}", action.action);
             format!("unsupported")
         }
-    }.into()
+    }
+    .into()
 }
 
 async fn add_note(s: &Fields) -> Result<()> {
     eprintln!("add W='{}' R='{}' S='{}'", s.word, s.reading, s.sentence);
 
     let url = format!("https://jpdb.io/search?q={}&lang=english#a", s.word);
-
 
     let client = Client::builder()
         //.cookie_store(true)
@@ -152,16 +158,17 @@ async fn add_note(s: &Fields) -> Result<()> {
         .map_err(|e| anyhow!("{e:?}"))?;
     let selected = document
         .select(&selector)
+        .map(|v| v.value().attr("href").unwrap())
+        .filter(|s| s.contains("vocabulary"))
         .next();
 
-    let url = if let Some(selected) = selected {
-        let path = selected.value().attr("href").context("should be impossible")?;
+    let url = if let Some(path) = selected {
         format!("{}{}{}", URL_PREFIX, DOMAIN, path)
     } else {
         url
     };
 
-    let url = url.split("?").next().unwrap(); // cut off parameters and jump points
+    let url = url.split("#").next().unwrap(); // cut off jump points
     open::that(url)?;
     Ok(())
 }
