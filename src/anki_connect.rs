@@ -32,7 +32,7 @@ impl Response {
         if let Some(s) = &self.error {
             return s.clone();
         }
-        return "No response.".into();
+        "No response.".into()
     }
 }
 

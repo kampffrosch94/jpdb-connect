@@ -1,34 +1,59 @@
 mod anki_connect;
 mod jpdb;
 
+use std::time::Duration;
+use tower::ServiceBuilder;
+
+use crate::anki_connect::AnkiConnectAction;
+use crate::jpdb::*;
+use anyhow::Result;
 use warp::hyper::body::Bytes;
 use warp::Filter;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
+    let client = reqwest::Client::builder()
+        //.cookie_store(true)
+        //.cookie_provider(jar.into())
+        .build()?;
+    let service = ServiceBuilder::new()
+        .buffer(100)
+        .concurrency_limit(1)
+        .rate_limit(5, Duration::from_secs(3)) // so that we don't get IP banned
+        .service(ReqwestService { client });
+
+    let jpdb = JPDBConnection { service };
+
     let bytes = warp::any()
         .and(warp::body::bytes())
-        .then(|body: Bytes| async move {
-            let s: String = String::from_utf8(body.slice(..).to_vec()).unwrap();
-            eprintln!("{}", s);
-            let a: anki_connect::AnkiConnectAction = serde_json::from_str(&s).unwrap();
+        .then(move |body: Bytes| {
+            let jpdb = jpdb.clone();
+            async move {
+                let s: String = String::from_utf8(body.slice(..).to_vec()).unwrap();
+                eprintln!("{}", s);
+                let a: AnkiConnectAction = serde_json::from_str(&s).unwrap();
 
-            let answer = &handle_action(&a).await;
-            return if a.version == 2 {
-                answer.version_downgrade()
-            } else {
-                serde_json::to_string(answer).unwrap()
-            };
+                let answer = &handle_action(&a, jpdb).await;
+                return if a.version == 2 {
+                    answer.version_downgrade()
+                } else {
+                    serde_json::to_string(answer).unwrap()
+                };
+            }
         });
 
     warp::serve(bytes.with(warp::log::custom(|info| {
-        eprintln!("{} {} {}", info.method(), info.path(), info.status(), );
+        eprintln!("{} {} {}", info.method(), info.path(), info.status(),);
     })))
-        .run(([127, 0, 0, 1], 3030))
-        .await;
+    .run(([127, 0, 0, 1], 3030))
+    .await;
+    Ok(())
 }
 
-async fn handle_action(action: &anki_connect::AnkiConnectAction) -> anki_connect::Response {
+async fn handle_action(
+    action: &AnkiConnectAction,
+    mut jpdb: JPDBConnection,
+) -> anki_connect::Response {
     eprintln!("{}", &action.action);
     match action.action.as_str() {
         "version" => format!("6"),
@@ -44,7 +69,7 @@ async fn handle_action(action: &anki_connect::AnkiConnectAction) -> anki_connect
                 .as_ref()
                 .unwrap()
                 .fields;
-            jpdb::add_note(field).await.unwrap();
+            jpdb.add_note(field).await.unwrap();
             format!(r#"12345"#) // TODO some id
         }
         "guiBrowse" => {
@@ -74,5 +99,5 @@ async fn handle_action(action: &anki_connect::AnkiConnectAction) -> anki_connect
             format!("unsupported")
         }
     }
-        .into()
+    .into()
 }

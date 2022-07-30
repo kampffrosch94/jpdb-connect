@@ -14,3 +14,4 @@ open = "2.1.2"
 anyhow = "1.0.57"
 reqwest = { version = "0.11.10", features = ["cookies"] }
 scraper = "0.13.0"
+tower = {version = "0.4.13", features = ["limit", "util", "buffer", "make"]}
