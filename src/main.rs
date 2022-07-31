@@ -23,8 +23,18 @@ pub struct Config {
 }
 
 fn read_config() -> Result<Config> {
+    let exe_path = std::env::current_exe()?;
+    let config_path = exe_path.parent().context("no parent T_T")?.join("jpdb_connect.toml");
 
-    let content = std::fs::read_to_string(config_path)?;
+    let content = if config_path.as_path().exists() {
+        println!("loading config from {}", config_path.display());
+        std::fs::read_to_string(&config_path)?
+    } else {
+        println!("creating default config file at {}", config_path.display());
+        let s = include_str!("default_config.toml");
+        std::fs::write(&config_path, s)?;
+        s.to_string()
+    };
     Ok(toml::from_str(&content)?)
 }
 
@@ -67,6 +77,7 @@ async fn main() -> Result<()> {
             }
         });
 
+    println!("Starting server.");
     warp::serve(bytes.with(warp::log::custom(|info| {
         eprintln!("{} {} {}", info.method(), info.path(), info.status(),);
     })))
