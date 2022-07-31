@@ -8,9 +8,12 @@ use tower::ServiceBuilder;
 use crate::anki_connect::AnkiConnectAction;
 use crate::jpdb::*;
 use anyhow::{Context, Result};
+use reqwest::cookie::Jar;
 use warp::hyper::body::Bytes;
 use warp::Filter;
 
+const DOMAIN: &str = "jpdb.io";
+const URL_PREFIX: &str = "https://";
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Config {
@@ -19,8 +22,9 @@ pub struct Config {
     pub auto_add: Option<u64>,
 }
 
-fn read_config() -> std::io::Result<Config> {
-    let content = std::fs::read_to_string("jpdb_connect.toml")?;
+fn read_config() -> Result<Config> {
+
+    let content = std::fs::read_to_string(config_path)?;
     Ok(toml::from_str(&content)?)
 }
 
@@ -28,10 +32,15 @@ fn read_config() -> std::io::Result<Config> {
 async fn main() -> Result<()> {
     let config = read_config().context("Config file can not be loaded.")?;
 
-    let client = reqwest::Client::builder()
-        //.cookie_store(true)
-        //.cookie_provider(jar.into())
-        .build()?;
+    let mut client = reqwest::Client::builder();
+    if let Some(ref sid) = config.session_id {
+        let jar = Jar::default();
+        const COOKIE_NAME: &str = "sid";
+        let cookie_str = format!("{COOKIE_NAME}={}; Domain={DOMAIN}", sid);
+        jar.add_cookie_str(&cookie_str, &format!("{URL_PREFIX}{DOMAIN}").parse()?);
+        client = client.cookie_store(true).cookie_provider(jar.into());
+    }
+    let client = client.build()?;
     let service = ServiceBuilder::new()
         .buffer(100)
         .concurrency_limit(1)

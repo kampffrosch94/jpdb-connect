@@ -17,8 +17,29 @@ fn parse_detail_url(vocab: &str, reading: &str) -> impl Parser<char, String, Err
     ).map(|(_a, b)| b)
 }
 
-pub fn substring(exclude: &str) -> impl Parser<char, String, Error=Simple<char>> + '_ {
-    none_of(exclude).repeated().at_least(1).collect().boxed()
+#[derive(Debug)]
+pub struct VocabId {
+    pub v: String,
+    pub s: String,
+    pub r: String,
+}
+
+pub fn find_vocab_id(body: &str) -> Result<VocabId> {
+    parse_vocab_id().parse(body).map_err(|e| anyhow!("{e:?}"))
+}
+
+fn parse_vocab_id() -> impl Parser<char, VocabId, Error=Simple<char>> {
+    take_until(
+        just(r#""/select_deck?v="#)
+            .ignore_then(digits(10))
+            .then_ignore(just("&amp;").or(just("&")))
+            .then_ignore(just("s="))
+            .then(digits(10))
+            .then_ignore(just("&amp;").or(just("&")))
+            .then_ignore(just("r="))
+            .then(digits(10))
+            .map(|((v, s), r)| VocabId { v, s, r })
+    ).map(|(_a, b)| b)
 }
 
 #[cfg(test)]
@@ -26,10 +47,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_all_clean_test() {
+    fn parse_detail_url_test() {
         let example = r#"href or whatever idc "/vocabulary/1259620/見事/みごと?lang=english#a""#;
         // let parsed = parse_all().parse(example).unwrap();
         let parsed = parse_detail_url("見事", "みごと").parse(example).unwrap();
         assert_eq!("/vocabulary/1259620/見事/みごと", parsed)
+    }
+
+
+    #[test]
+    fn parse_vocab_id_test() {
+        let example = r#" asdfafsdas "/select_deck?v=1414580&amp;s=1406264136&amp;r=1437918808""#;
+        // let parsed = parse_all().parse(example).unwrap();
+        let parsed = parse_vocab_id().parse(example).unwrap();
+        println!("{:?}", parsed);
     }
 }
