@@ -1,4 +1,4 @@
-use crate::anki_connect;
+use crate::{anki_connect, Config, parsing};
 use anyhow::{anyhow, Result};
 use reqwest::Request;
 use std::future::Future;
@@ -14,6 +14,7 @@ const URL_PREFIX: &str = "https://";
 #[derive(Clone)]
 pub struct JPDBConnection {
     pub service: Buffer<ConcurrencyLimit<RateLimit<ReqwestService>>, Request>,
+    pub config: Config,
 }
 
 pub struct ReqwestService {
@@ -41,25 +42,37 @@ impl JPDBConnection {
 
         let url = format!("https://jpdb.io/search?q={}&lang=english#a", s.word);
 
-        let req = Request::new(reqwest::Method::POST, reqwest::Url::parse(&url)?);
+        let req = Request::new(reqwest::Method::GET, reqwest::Url::parse(&url)?);
         let res = self.service.ready().await.unwrap().call(req).await.unwrap();
         let body = &res.text().await?;
-        let document = scraper::Html::parse_document(&body);
-        let selector = scraper::Selector::parse(&format!(r#"a[href*="{}/{}"]"#, s.word, s.reading))
-            .map_err(|e| anyhow!("{e:?}"))?;
-        let selected = document
-            .select(&selector)
-            .map(|v| v.value().attr("href").unwrap())
-            .find(|s| s.contains("vocabulary"));
+        let detail_url = parsing::find_detail_url(body, &s.word, &s.reading);
 
-        let url = if let Some(path) = selected {
+        let url = if let Ok(path) = detail_url {
             format!("{}{}{}", URL_PREFIX, DOMAIN, path)
         } else {
             url
         };
 
         let url = url.split('#').next().unwrap(); // cut off jump points
-        open::that(url)?;
+
+        if self.config.auto_open {
+            open::that(url)?;
+        }
+
+        if self.config.session_id.is_some() {
+            if let Some(deck_id) = self.config.auto_add {
+                let req = Request::new(reqwest::Method::GET, reqwest::Url::parse(&url)?);
+                //let res = self.service.ready().await.unwrap().call(req).await.unwrap();
+                // let body = &res.text().await?;
+
+
+                // add to deck
+                // let add_url = format!("{}{}/deck/{}/add", URL_PREFIX, DOMAIN, deck_id);
+                // let req = Request::new(reqwest::Method::POST, reqwest::Url::parse(&url)?);
+                // TODO payload = { 'v': id_vocab, 's': id_spelling, 'origin': origin }
+            }
+        }
+
         Ok(())
     }
 }

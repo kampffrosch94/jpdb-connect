@@ -1,17 +1,33 @@
 mod anki_connect;
 mod jpdb;
+mod parsing;
 
 use std::time::Duration;
 use tower::ServiceBuilder;
 
 use crate::anki_connect::AnkiConnectAction;
 use crate::jpdb::*;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use warp::hyper::body::Bytes;
 use warp::Filter;
 
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct Config {
+    pub session_id: Option<String>,
+    pub auto_open: bool,
+    pub auto_add: Option<u64>,
+}
+
+fn read_config() -> std::io::Result<Config> {
+    let content = std::fs::read_to_string("jpdb_connect.toml")?;
+    Ok(toml::from_str(&content)?)
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    let config = read_config().context("Config file can not be loaded.")?;
+
     let client = reqwest::Client::builder()
         //.cookie_store(true)
         //.cookie_provider(jar.into())
@@ -22,7 +38,7 @@ async fn main() -> Result<()> {
         .rate_limit(5, Duration::from_secs(3)) // so that we don't get IP banned
         .service(ReqwestService { client });
 
-    let jpdb = JPDBConnection { service };
+    let jpdb = JPDBConnection { service, config };
 
     let bytes = warp::any()
         .and(warp::body::bytes())
