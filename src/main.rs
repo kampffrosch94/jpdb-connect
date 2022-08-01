@@ -12,9 +12,6 @@ use reqwest::cookie::Jar;
 use warp::hyper::body::Bytes;
 use warp::Filter;
 
-const DOMAIN: &str = "jpdb.io";
-const URL_PREFIX: &str = "https://";
-
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Config {
     pub session_id: Option<String>,
@@ -38,6 +35,32 @@ fn read_config() -> Result<Config> {
     Ok(toml::from_str(&content)?)
 }
 
+
+async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()> {
+    let should_auto_add = config.session_id.is_some() && config.auto_add.is_some();
+
+    println!("Auto open card in browser: {}", config.auto_open);
+    println!("Auto add card to deck: {}", should_auto_add);
+
+    if !config.auto_open && !should_auto_add {
+        println!("In this configuration jpdb-connect does not do anything.");
+    }
+
+    if should_auto_add {
+        let response = client.get(format!("{}{}/deck/{}/add", URL_PREFIX, DOMAIN, config.auto_add.unwrap())).send().await?;
+
+        let status_code = response.status().as_u16();
+        match status_code{
+            200 => println!("Login successful."),
+            300..=399 => println!("Your sessionid is invalid. Update it to the one you currently use in your browser and try again."),
+            404 => println!("Your sessionid is invalid or the deck you are trying to add to does not exist."),
+            _ => print!("Unhandled status code {status_code}"),
+        }
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let config = read_config().context("Config file can not be loaded.")?;
@@ -51,6 +74,9 @@ async fn main() -> Result<()> {
         client = client.cookie_store(true).cookie_provider(jar.into());
     }
     let client = client.build()?;
+
+    validate_config(&config, &client).await?;
+
     let service = ServiceBuilder::new()
         .buffer(100)
         .concurrency_limit(1)
@@ -79,10 +105,10 @@ async fn main() -> Result<()> {
 
     println!("Starting server.");
     warp::serve(bytes.with(warp::log::custom(|info| {
-        eprintln!("{} {} {}", info.method(), info.path(), info.status(),);
+        eprintln!("{} {} {}", info.method(), info.path(), info.status(), );
     })))
-    .run(([127, 0, 0, 1], 3030))
-    .await;
+        .run(([127, 0, 0, 1], 3030))
+        .await;
     Ok(())
 }
 
@@ -135,5 +161,5 @@ async fn handle_action(
             format!("unsupported")
         }
     }
-    .into()
+        .into()
 }

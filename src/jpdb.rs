@@ -11,8 +11,8 @@ use tower::limit::{ConcurrencyLimit, RateLimit};
 use tower::{Service, ServiceExt};
 use crate::parsing::find_vocab_id;
 
-const DOMAIN: &str = "jpdb.io";
-const URL_PREFIX: &str = "https://";
+pub const DOMAIN: &str = "jpdb.io";
+pub const URL_PREFIX: &str = "https://";
 
 #[derive(Clone)]
 pub struct JPDBConnection {
