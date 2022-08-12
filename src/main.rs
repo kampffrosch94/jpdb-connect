@@ -47,7 +47,7 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
     }
 
     if should_auto_add {
-        let response = client.get(format!("{}{}/deck/{}/add", URL_PREFIX, DOMAIN, config.auto_add.unwrap())).send().await?;
+        let response = client.get(format!("{}{}/deck?id={}", URL_PREFIX, DOMAIN, config.auto_add.unwrap())).send().await?;
 
         let status_code = response.status().as_u16();
         match status_code{
