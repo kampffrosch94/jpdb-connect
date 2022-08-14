@@ -5,7 +5,7 @@ mod parsing;
 use std::time::Duration;
 use tower::ServiceBuilder;
 
-use crate::anki_connect::AnkiConnectAction;
+use crate::anki_connect::{AnkiConnectAction, Response};
 use crate::jpdb::*;
 use anyhow::{Context, Result};
 use log::*;
@@ -131,11 +131,13 @@ async fn main() -> Result<()> {
                 let a: AnkiConnectAction = serde_json::from_str(&s).unwrap();
 
                 let answer = &handle_action(&a, jpdb).await;
-                return if a.version == 2 {
+                let r = if a.version == 2 {
                     answer.version_downgrade()
                 } else {
                     serde_json::to_string(answer).unwrap()
                 };
+                debug!("Anki-connect answer: '{}'", r);
+                return r;
             }
         });
 
@@ -154,10 +156,10 @@ async fn handle_action(
 ) -> anki_connect::Response {
     debug!("{}", &action.action);
     match action.action.as_str() {
-        "version" => format!("6"),
-        "deckNames" => format!(r#"["jpdb"]"#),
-        "modelNames" => format!(r#"["jpdb"]"#),
-        "modelFieldNames" => format!(r#"["word", "reading", "sentence"]"#),
+        "version" => Response::from("6"),
+        "deckNames" => Response::from(r#"["jpdb"]"#),
+        "modelNames" => Response::from(r#"["jpdb"]"#),
+        "modelFieldNames" => Response::from(r#"["word", "reading", "sentence"]"#),
         "addNote" => {
             let field = &action
                 .params
@@ -167,17 +169,19 @@ async fn handle_action(
                 .as_ref()
                 .unwrap()
                 .fields;
-            jpdb.add_note(field).await.unwrap();
-            format!(r#"12345"#) // TODO some id
+            jpdb.add_note(field)
+                .await
+                .map(|_| Response::from("1234")) // TODO card id
+                .unwrap_or_else(|e| Response::error(e.to_string()))
         }
         "guiBrowse" => {
             // TODO open browser
             // action.params.query = "nid:1234"
-            format!(r#"ok"#)
+            Response::error("unsupported")
         }
         "canAddNotes" => {
             // TODO return vec of bools
-            let v = action
+            let _v = action
                 .params
                 .as_ref()
                 .unwrap()
@@ -189,14 +193,14 @@ async fn handle_action(
                 .collect::<Vec<String>>()
                 .join(", ");
             warn!("WIP");
-            format!(r#"[{}]"#, v)
+            //format!(r#"[{}]"#, v)
+            Response::error("unsupported")
         }
         _ => {
             // multi
             // findnotes
             warn!("unsupported action {}", action.action);
-            format!("unsupported")
+            Response::error("unsupported")
         }
     }
-    .into()
 }

@@ -30,7 +30,7 @@ impl Response {
             return s.clone();
         }
         if let Some(s) = &self.error {
-            return s.clone();
+            return format!(r#"{{"result": null, "error": "{}"}}"#, s);
         }
         "No response.".into()
     }

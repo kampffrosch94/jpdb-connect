@@ -63,7 +63,11 @@ impl JPDBConnection {
             open::that(&url)?;
         }
 
-        if self.config.session_id.is_some() && had_detail {
+        if self.config.session_id.is_some() {
+            if self.config.auto_add.is_some() && !had_detail {
+                error!("Card can not be handled automatically, because it's detail page can not be found.");
+                return Err(anyhow::anyhow!("can't find card"));
+            }
             if let Some(deck_id) = self.config.auto_add {
                 info!("Adding card to deck: {url}");
 
