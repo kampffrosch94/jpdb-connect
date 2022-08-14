@@ -1,6 +1,8 @@
 # JPDB-connect
 
-This project allows you to open cards on jpdb with yomichan via the anki-connect protocol.
+At the moment this program has two features:
+- open vocab that is added via yomichan in a jpdb-tab (does not require login)
+- automatically add that vocab to a specified deck (does require session cookie, need to edit config)
 
 ## How to use:
 
