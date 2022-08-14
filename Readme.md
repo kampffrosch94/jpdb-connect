@@ -6,11 +6,13 @@ At the moment this program has two features:
 
 ## How to use:
 
-Download a binary from releases and run it.
+Download a zip appropiate for your OS from [releases](https://github.com/kampffrosch94/jpdb-connect/releases), extract the executable inside and run it.
 
 Set up Yomichan to look for a server at localhost:3030
 
 ![](yomichansetting1.png)
+
+Check for card duplicates should be *off*.
 
 Click on configure Anki card format and set it up like this:
 
