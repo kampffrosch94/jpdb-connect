@@ -3,14 +3,14 @@ use serde::Serialize;
 
 #[derive(Serialize, Debug)]
 pub struct Response {
-    pub response: Option<String>,
+    pub result: Option<String>,
     pub error: Option<String>,
 }
 
 impl<T: Into<String>> From<T> for Response {
     fn from(s: T) -> Self {
         Response {
-            response: Some(s.into()),
+            result: Some(s.into()),
             error: None,
         }
     }
@@ -20,13 +20,13 @@ impl Response {
     #[allow(unused)]
     pub fn error(s: impl Into<String>) -> Self {
         Response {
-            response: None,
+            result: None,
             error: Some(s.into()),
         }
     }
 
     pub fn version_downgrade(&self) -> String {
-        if let Some(s) = &self.response {
+        if let Some(s) = &self.result {
             return s.clone();
         }
         if let Some(s) = &self.error {
