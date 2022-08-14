@@ -9,3 +9,6 @@ auto_open = true
 ### you can get the id by clicking on the detail view of a deck and looking at your browser url bar
 ### if this option is not set, it will not add cards automatically
 # auto_add = 0
+
+### for debugging and development purposes
+# log_level = "Trace"

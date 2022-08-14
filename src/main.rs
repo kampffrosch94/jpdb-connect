@@ -8,6 +8,7 @@ use tower::ServiceBuilder;
 use crate::anki_connect::AnkiConnectAction;
 use crate::jpdb::*;
 use anyhow::{Context, Result};
+use log::*;
 use reqwest::cookie::Jar;
 use warp::hyper::body::Bytes;
 use warp::Filter;
@@ -17,11 +18,15 @@ pub struct Config {
     pub session_id: Option<String>,
     pub auto_open: bool,
     pub auto_add: Option<u64>,
+    pub log_level: Option<Level>,
 }
 
 fn read_config() -> Result<Config> {
     let exe_path = std::env::current_exe()?;
-    let config_path = exe_path.parent().context("no parent T_T")?.join("jpdb_connect.toml");
+    let config_path = exe_path
+        .parent()
+        .context("no parent T_T")?
+        .join("jpdb_connect.toml");
 
     let content = if config_path.as_path().exists() {
         println!("loading config from {}", config_path.display());
@@ -35,35 +40,65 @@ fn read_config() -> Result<Config> {
     Ok(toml::from_str(&content)?)
 }
 
-
 async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()> {
     let should_auto_add = config.session_id.is_some() && config.auto_add.is_some();
 
-    println!("Auto open card in browser: {}", config.auto_open);
-    println!("Auto add card to deck: {}", should_auto_add);
+    info!("Auto open card in browser: {}", config.auto_open);
+    info!("Auto add card to deck: {}", should_auto_add);
 
     if !config.auto_open && !should_auto_add {
-        println!("In this configuration jpdb-connect does not do anything.");
+        warn!("In this configuration jpdb-connect does not do anything.");
     }
 
     if should_auto_add {
-        let response = client.get(format!("{}{}/deck?id={}", URL_PREFIX, DOMAIN, config.auto_add.unwrap())).send().await?;
+        let response = client
+            .get(format!(
+                "{}{}/deck?id={}",
+                URL_PREFIX,
+                DOMAIN,
+                config.auto_add.unwrap()
+            ))
+            .send()
+            .await?;
 
         let status_code = response.status().as_u16();
-        match status_code{
-            200 => println!("Login successful."),
-            300..=399 => println!("Your sessionid is invalid. Update it to the one you currently use in your browser and try again."),
-            404 => println!("Your sessionid is invalid or the deck you are trying to add to does not exist."),
-            _ => print!("Unhandled status code {status_code}"),
+        match status_code {
+            200 => info!("Login successful."),
+            300..=399 => error!("Your sessionid is invalid. Update it to the one you currently use in your browser and try again."),
+            404 => error!("Your sessionid is invalid or the deck you are trying to add to does not exist."),
+            _ => error!("Unhandled status code {status_code}"),
         }
     }
 
     Ok(())
 }
 
+fn setup_logger(config: &Config) -> Result<()> {
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "{}[{}][{}] {}",
+                chrono::Local::now().format("[%H:%M:%S]"),
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
+        .level(LevelFilter::Info)
+        .level_for(
+            "jpdb_connect",
+            config.log_level.unwrap_or(Level::Info).to_level_filter(),
+        )
+        .chain(std::io::stdout())
+        //.chain(fern::log_file("output.log")?)
+        .apply()?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let config = read_config().context("Config file can not be loaded.")?;
+    setup_logger(&config)?;
 
     let mut client = reqwest::Client::builder();
     if let Some(ref sid) = config.session_id {
@@ -91,7 +126,8 @@ async fn main() -> Result<()> {
             let jpdb = jpdb.clone();
             async move {
                 let s: String = String::from_utf8(body.slice(..).to_vec()).unwrap();
-                eprintln!("{}", s);
+                trace!("Request received:");
+                trace!("{}", s);
                 let a: AnkiConnectAction = serde_json::from_str(&s).unwrap();
 
                 let answer = &handle_action(&a, jpdb).await;
@@ -103,12 +139,12 @@ async fn main() -> Result<()> {
             }
         });
 
-    println!("Starting server.");
+    info!("Starting server.");
     warp::serve(bytes.with(warp::log::custom(|info| {
-        eprintln!("{} {} {}", info.method(), info.path(), info.status(), );
+        debug!("{} {} {}", info.method(), info.path(), info.status(),);
     })))
-        .run(([127, 0, 0, 1], 3030))
-        .await;
+    .run(([127, 0, 0, 1], 3030))
+    .await;
     Ok(())
 }
 
@@ -116,7 +152,7 @@ async fn handle_action(
     action: &AnkiConnectAction,
     mut jpdb: JPDBConnection,
 ) -> anki_connect::Response {
-    eprintln!("{}", &action.action);
+    debug!("{}", &action.action);
     match action.action.as_str() {
         "version" => format!("6"),
         "deckNames" => format!(r#"["jpdb"]"#),
@@ -152,14 +188,15 @@ async fn handle_action(
                 .map(|_| "true".to_string())
                 .collect::<Vec<String>>()
                 .join(", ");
+            warn!("WIP");
             format!(r#"[{}]"#, v)
         }
         _ => {
             // multi
             // findnotes
-            eprintln!("{}", action.action);
+            warn!("unsupported action {}", action.action);
             format!("unsupported")
         }
     }
-        .into()
+    .into()
 }
