@@ -153,13 +153,13 @@ async fn main() -> Result<()> {
 async fn handle_action(
     action: &AnkiConnectAction,
     mut jpdb: JPDBConnection,
-) -> anki_connect::Response {
+) -> Response {
     debug!("{}", &action.action);
     match action.action.as_str() {
-        "version" => Response::from("6"),
-        "deckNames" => Response::from(r#"["jpdb"]"#),
-        "modelNames" => Response::from(r#"["jpdb"]"#),
-        "modelFieldNames" => Response::from(r#"["word", "reading", "sentence"]"#),
+        "version" => Response::result(6),
+        "deckNames" => Response::result(["jpdb"]),
+        "modelNames" => Response::result(["jpdb"]),
+        "modelFieldNames" => Response::result(["word", "reading", "sentence"]),
         "addNote" => {
             let field = &action
                 .params
@@ -171,7 +171,7 @@ async fn handle_action(
                 .fields;
             jpdb.add_note(field)
                 .await
-                .map(|_| Response::from("1234")) // TODO card id
+                .map(|_| Response::result(1234)) // TODO card id
                 .unwrap_or_else(|e| Response::error(e.to_string()))
         }
         "guiBrowse" => {

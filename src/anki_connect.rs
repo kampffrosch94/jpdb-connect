@@ -1,19 +1,10 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize)]
 pub struct Response {
-    pub result: Option<String>,
+    pub result: Option<Box<dyn erased_serde::Serialize>>,
     pub error: Option<String>,
-}
-
-impl<T: Into<String>> From<T> for Response {
-    fn from(s: T) -> Self {
-        Response {
-            result: Some(s.into()),
-            error: None,
-        }
-    }
 }
 
 impl Response {
@@ -25,9 +16,17 @@ impl Response {
         }
     }
 
+    pub fn result(s: impl Serialize + 'static) -> Self {
+        Response {
+            result: Some(Box::new(s)),
+            error: None,
+        }
+    }
+
+    // we need this for compatibility with yomichan
     pub fn version_downgrade(&self) -> String {
-        if let Some(s) = &self.result {
-            return s.clone();
+        if let Some(r) = &self.result {
+            return serde_json::to_string(r).unwrap();
         }
         if let Some(s) = &self.error {
             return format!(r#"{{"result": null, "error": "{}"}}"#, s);
