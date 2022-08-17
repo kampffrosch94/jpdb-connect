@@ -10,13 +10,13 @@ Download a zip appropiate for your OS from [releases](https://github.com/kampffr
 
 Set up Yomichan to look for a server at localhost:3030
 
-![](yomichansetting1.png)
+![](doc/yomichansetting1.png)
 
-Check for card duplicates should be *off*.
+"Check for card duplicates" should be *off*.
 
-Click on configure Anki card format and set it up like this:
+Click on "configure Anki card format" and set it up like this:
 
-![](yomichansetting2.png)
+![](doc/yomichansetting2.png)
 
 
 ## Configuration
