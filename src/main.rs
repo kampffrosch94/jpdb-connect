@@ -150,10 +150,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn handle_action(
-    action: &AnkiConnectAction,
-    mut jpdb: JPDBConnection,
-) -> Response {
+async fn handle_action(action: &AnkiConnectAction, mut jpdb: JPDBConnection) -> Response {
     debug!("{}", &action.action);
     match action.action.as_str() {
         "version" => Response::result(6),
