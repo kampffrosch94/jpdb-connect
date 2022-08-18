@@ -7,6 +7,7 @@ use tower::ServiceBuilder;
 
 use crate::anki_connect::{AnkiConnectAction, Response};
 use crate::jpdb::*;
+use crate::parsing::has_login_prompt;
 use anyhow::{Context, Result};
 use log::*;
 use reqwest::cookie::Jar;
@@ -62,11 +63,20 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
             .await?;
 
         let status_code = response.status().as_u16();
-        match status_code {
-            200 => info!("Login successful."),
-            300..=399 => error!("Your sessionid is invalid. Update it to the one you currently use in your browser and try again."),
-            404 => error!("Your sessionid is invalid or the deck you are trying to add to does not exist."),
-            _ => error!("Unhandled status code {status_code}"),
+        let body = &response
+            .text()
+            .await
+            .unwrap_or("Some error happened.".into());
+        let has_login_prompt = has_login_prompt(&body);
+        debug!("has_login_prompt {}", has_login_prompt);
+        trace!("Status code: {}", status_code);
+        trace!("Deck body: {}", body);
+        match (status_code, has_login_prompt) {
+            (200, false) => info!("Login successful."),
+            (200, true) => error!("Your sessionid is invalid. Update it to the one you currently use in your browser and try again."),
+            (300..=399, _) => error!("Your sessionid is invalid. Update it to the one you currently use in your browser and try again."),
+            (404, _) => error!("Your sessionid is invalid or the deck you are trying to add to does not exist."),
+            _ => error!("Unhandled status code {status_code}."),
         }
     }
 

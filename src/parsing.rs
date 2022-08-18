@@ -2,6 +2,14 @@ use anyhow::{anyhow, Result};
 use chumsky::prelude::*;
 use chumsky::text::digits;
 
+pub fn has_login_prompt(body: &str) -> bool {
+    parse_login_prompt().parse(body).unwrap_or(false)
+}
+
+fn parse_login_prompt() -> impl Parser<char, bool, Error = Simple<char>> {
+    take_until(just("https://jpdb.io/login_with_google")).map(|_| true)
+}
+
 pub fn find_detail_url(body: &str, vocab: &str, reading: &str) -> Result<String> {
     parse_detail_url(vocab, reading)
         .parse(body)
