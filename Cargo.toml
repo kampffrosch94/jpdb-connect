@@ -12,7 +12,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.81"
 erased-serde = "0.3"
 open = "2.1.2"
-anyhow = "1.0.57"
+anyhow = { version = "1.0", features = ["backtrace"] }
 reqwest = { version = "0.11.10", features = ["cookies"] }
 tower = {version = "0.4.13", features = ["limit", "util", "buffer", "make"]}
 toml = "0.5.9"

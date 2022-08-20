@@ -5,6 +5,7 @@ use log::*;
 use reqwest::header::HeaderValue;
 use reqwest::{Request, Response};
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -31,7 +32,7 @@ impl Service<Request> for ReqwestService {
     type Response = reqwest::Response;
     type Error = reqwest::Error;
     type Future =
-        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
+    Pin<Box<dyn Future<Output=Result<Self::Response, Self::Error>> + Send + 'static>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -43,6 +44,7 @@ impl Service<Request> for ReqwestService {
 }
 
 pub async fn send_request(service: &mut BufferedService, req: Request) -> Result<Response> {
+    trace!("Request url: {}", req.url());
     service
         .ready()
         .await
@@ -50,6 +52,29 @@ pub async fn send_request(service: &mut BufferedService, req: Request) -> Result
         .call(req)
         .await
         .map_err(|e| anyhow!("{e}")) // we use this mapping to make our error type sized
+}
+
+fn abs_url(rel: impl Display) -> String {
+    format!("{}{}{}", URL_PREFIX, DOMAIN, rel)
+}
+
+pub async fn get_request(service: &mut BufferedService, rel_url: &str) -> Result<Response> {
+    let url = abs_url(rel_url);
+    let req = Request::new(reqwest::Method::GET, reqwest::Url::parse(&url)?);
+    send_request(service, req).await
+}
+
+pub async fn form_request(service: &mut BufferedService, rel_url: &str, payload: HashMap<&str, String>) -> Result<Response> {
+    let url = abs_url(rel_url);
+    let mut req = Request::new(reqwest::Method::POST, reqwest::Url::parse(&url)?);
+    let payload =
+        serde_urlencoded::ser::to_string(payload).context("encoding payload")?;
+    *req.body_mut() = Some(reqwest::Body::from(payload));
+    req.headers_mut().insert(
+        "content-type",
+        HeaderValue::from_static("application/x-www-form-urlencoded"),
+    );
+    send_request(service, req).await
 }
 
 impl JPDBConnection {
@@ -63,15 +88,14 @@ impl JPDBConnection {
             .await
             .context("search request")?;
         let body = &res.text().await?;
-        let detail_url = parsing::find_detail_url(body, &s.word, &s.reading)
-            .map(|relative_url| format!("{}{}{}", URL_PREFIX, DOMAIN, relative_url));
+        let detail_url = parsing::find_detail_url(body, &s.word, &s.reading);
 
         if self.config.auto_open {
-            let url = if let Ok(ref detail_url) = &detail_url {
-                &detail_url
+            let url = if let Ok(ref rel_url) = &detail_url {
+                format!("{}{}{}", URL_PREFIX, DOMAIN, rel_url)
             } else {
                 info!("Can't find details page for: {}", s.word);
-                &url
+                url.into()
             };
             info!("Opening: {}", url);
             open::that(&url)?;
@@ -80,8 +104,7 @@ impl JPDBConnection {
         if self.config.session_id.is_some() {
             if let Ok(ref detail_url) = detail_url {
                 // look up vocab id on details page
-                let req = Request::new(reqwest::Method::GET, reqwest::Url::parse(&detail_url)?);
-                let res = send_request(&mut self.service, req)
+                let res = get_request(&mut self.service, detail_url)
                     .await
                     .context("get detail page")?;
                 let body = &res.text().await?;
@@ -89,19 +112,27 @@ impl JPDBConnection {
                 trace!("{}", body);
                 let vocab = VocabCard { body };
                 if let Some(deck_id) = self.config.auto_add {
-                    info!("Adding card to deck: {}", url);
+                    info!("Adding card to deck: {}", abs_url(detail_url));
                     vocab
                         .add_to_deck(&mut self.service, deck_id, &detail_url)
                         .await?;
                 }
+                if self.config.auto_forq {
+                    // TODO check if FORQING is even possible
+                    // it isn't when card is already learned or not in any decks
+                    // and it isn't already forqed
+                    info!("FORQing: {}", abs_url(detail_url));
+                    vocab
+                        .forq(&mut self.service, &detail_url)
+                        .await?;
+                }
             } else {
-                if self.config.auto_add.is_some() {
+                if self.config.auto_add.is_some() || self.config.auto_forq {
                     error!("Card can not be handled automatically, because it's detail page can not be found.");
                     return Err(anyhow::anyhow!("can't find card"));
                 }
             }
         }
-
         Ok(())
     }
 }
@@ -122,28 +153,40 @@ impl VocabCard<'_> {
         origin: &str,
     ) -> Result<()> {
         let vocab_id = self.find_id()?;
-        let add_url = format!("{}{}/deck/{}/add", URL_PREFIX, DOMAIN, deck_id);
-        let mut req = Request::new(reqwest::Method::POST, reqwest::Url::parse(&add_url)?);
-        let payload = {
-            let mut payload = HashMap::new();
-            payload.insert("v", vocab_id.v);
-            payload.insert("r", vocab_id.r);
-            payload.insert("s", vocab_id.s);
-            payload.insert("origin", origin.to_string());
-            serde_urlencoded::ser::to_string(payload).context("encoding payload")?
-        };
+        let add_url = format!("/deck/{}/add", deck_id);
+        let mut payload = HashMap::new();
+        payload.insert("v", vocab_id.v);
+        payload.insert("r", vocab_id.r);
+        payload.insert("s", vocab_id.s);
+        payload.insert("origin", origin.to_string());
 
-        *req.body_mut() = Some(reqwest::Body::from(payload));
-        req.headers_mut().insert(
-            "content-type",
-            HeaderValue::from_static("application/x-www-form-urlencoded"),
-        );
-
-        let res = send_request(service, req).await.context("add to deck")?;
+        let res = form_request(service, &add_url, payload).await.context("add to deck")?;
         if !res.status().is_success() {
             return Err(anyhow!(
                 "Add to deck failed, status: {}",
                 res.status().as_u16()
+            ));
+        }
+        Ok(())
+    }
+
+    async fn forq(
+        &self,
+        service: &mut BufferedService,
+        origin: &str,
+    ) -> Result<()> {
+        let vocab_id = self.find_id()?;
+        let mut payload = HashMap::new();
+        payload.insert("v", vocab_id.v);
+        payload.insert("s", vocab_id.s);
+        payload.insert("origin", origin.to_string());
+        let res = form_request(service, "/prioritize", payload).await.context("forq request")?;
+        let status = res.status();
+        if !status.is_success() && !status.is_redirection() {
+            debug!("Error body: {}", res.text().await.unwrap_or_default());
+            return Err(anyhow!(
+                "FORQ failed, status: {}",
+                status.as_u16()
             ));
         }
         Ok(())

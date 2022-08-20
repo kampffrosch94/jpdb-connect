@@ -10,5 +10,8 @@ auto_open = true
 ### if this option is not set, it will not add cards automatically
 # auto_add = 0
 
+### TODO add description
+# auto_forq = true
+
 ### for debugging and development purposes
 # log_level = "Trace"
