@@ -1,5 +1,7 @@
 # JPDB-connect
 
+Connect [yomichan](https://github.com/FooSoft/yomichan) with [jpdb](https://jpdb.io) via [anki-connect](https://foosoft.net/projects/anki-connect/) protocol.
+
 At the moment this program has two features:
 - open vocab that is added via yomichan in a jpdb-tab (does not require login)
 - automatically add that vocab to a specified deck (does require session cookie, need to edit config)
