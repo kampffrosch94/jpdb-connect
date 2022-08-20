@@ -65,41 +65,40 @@ impl JPDBConnection {
         let body = &res.text().await?;
         let detail_url = parsing::find_detail_url(body, &s.word, &s.reading)
             .map(|relative_url| format!("{}{}{}", URL_PREFIX, DOMAIN, relative_url));
-        let had_detail = detail_url.is_ok();
-
-        let url = if let Ok(ref path) = &detail_url {
-            path.clone()
-        } else {
-            url
-        };
 
         if self.config.auto_open {
-            info!("Opening: {url}");
+            let url = if let Ok(ref detail_url) = &detail_url {
+                &detail_url
+            } else {
+                info!("Can't find details page for: {}", s.word);
+                &url
+            };
+            info!("Opening: {}", url);
             open::that(&url)?;
         }
 
         if self.config.session_id.is_some() {
-            if self.config.auto_add.is_some() && !had_detail {
-                error!("Card can not be handled automatically, because it's detail page can not be found.");
-                return Err(anyhow::anyhow!("can't find card"));
-            }
-
-            let detail_url = detail_url.context("should never fail")?;
-            // look up vocab id on details page
-            let req = Request::new(reqwest::Method::GET, reqwest::Url::parse(&detail_url)?);
-            let res = send_request(&mut self.service, req)
-                .await
-                .context("get detail page")?;
-            let body = &res.text().await?;
-            trace!("Details page:");
-            trace!("{body}");
-            let vocab = VocabCard { body };
-
-            if let Some(deck_id) = self.config.auto_add {
-                info!("Adding card to deck: {url}");
-                vocab
-                    .add_to_deck(&mut self.service, deck_id, &detail_url)
-                    .await?;
+            if let Ok(ref detail_url) = detail_url {
+                // look up vocab id on details page
+                let req = Request::new(reqwest::Method::GET, reqwest::Url::parse(&detail_url)?);
+                let res = send_request(&mut self.service, req)
+                    .await
+                    .context("get detail page")?;
+                let body = &res.text().await?;
+                trace!("Details page:");
+                trace!("{}", body);
+                let vocab = VocabCard { body };
+                if let Some(deck_id) = self.config.auto_add {
+                    info!("Adding card to deck: {}", url);
+                    vocab
+                        .add_to_deck(&mut self.service, deck_id, &detail_url)
+                        .await?;
+                }
+            } else {
+                if self.config.auto_add.is_some() {
+                    error!("Card can not be handled automatically, because it's detail page can not be found.");
+                    return Err(anyhow::anyhow!("can't find card"));
+                }
             }
         }
 
