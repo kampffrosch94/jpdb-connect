@@ -20,6 +20,7 @@ pub struct Config {
     pub auto_open: bool,
     pub auto_add: Option<u64>,
     pub auto_forq: bool,
+    pub auto_unlock: bool,
     pub log_level: Option<Level>,
 }
 
@@ -48,11 +49,13 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
     info!("Auto open card in browser: {}", config.auto_open);
     info!("Auto add card to deck: {}", should_auto_add);
     info!("Auto FORQ: {}", config.auto_forq);
+    info!("Auto unlock: {}", config.auto_unlock);
 
-    if !config.auto_open && !should_auto_add  && !config.auto_forq{
+    if !config.auto_open && !should_auto_add && !config.auto_forq  && !config.auto_unlock{
         warn!("In this configuration jpdb-connect does not do anything.");
     }
 
+    // TODO alternative login check for when auto_add is not enabled
     if should_auto_add {
         let response = client
             .get(format!(
@@ -181,7 +184,10 @@ async fn handle_action(action: &AnkiConnectAction, mut jpdb: JPDBConnection) -> 
             jpdb.add_note(field)
                 .await
                 .map(|_| Response::result(1234)) // TODO card id
-                .map_err(|e| {error!("{}", e.backtrace()); e})
+                .map_err(|e| {
+                    error!("{}", e.backtrace());
+                    e
+                })
                 .unwrap_or_else(|e| Response::error(e.to_string()))
         }
         "guiBrowse" => {

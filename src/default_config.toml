@@ -13,5 +13,8 @@ auto_open = true
 ### TODO add description
 # auto_forq = true
 
+### TODO add description
+# auto_unlock = true
+
 ### for debugging and development purposes
 # log_level = "Trace"
