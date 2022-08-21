@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2022-08-21
+### Fixed
+- boolean config options are now optional
+
 ## [0.4.0] - 2022-08-21
 ### Added
 - auto forq

@@ -17,9 +17,12 @@ use warp::Filter;
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Config {
     pub session_id: Option<String>,
+    #[serde(default)]
     pub auto_open: bool,
     pub auto_add: Option<u64>,
+    #[serde(default)]
     pub auto_forq: bool,
+    #[serde(default)]
     pub auto_unlock: bool,
     pub log_level: Option<Level>,
 }
