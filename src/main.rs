@@ -51,19 +51,20 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
     info!("Auto FORQ: {}", config.auto_forq);
     info!("Auto unlock: {}", config.auto_unlock);
 
-    if !config.auto_open && !should_auto_add && !config.auto_forq  && !config.auto_unlock{
+    if !config.auto_open && !should_auto_add && !config.auto_forq && !config.auto_unlock {
         warn!("In this configuration jpdb-connect does not do anything.");
     }
 
     // TODO alternative login check for when auto_add is not enabled
-    if should_auto_add {
+    let test_login = config.session_id.is_some()
+        && (config.auto_add.is_some() || config.auto_forq || config.auto_unlock);
+    if test_login {
         let response = client
-            .get(format!(
-                "{}{}/deck?id={}",
-                URL_PREFIX,
-                DOMAIN,
-                config.auto_add.unwrap()
-            ))
+            .get(if let Some(deck_id) = config.auto_add {
+                abs_url(format!("/deck?id={}", deck_id))
+            } else {
+                abs_url("/")
+            })
             .send()
             .await?;
 
@@ -75,7 +76,7 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
         let has_login_prompt = has_login_prompt(&body);
         debug!("has_login_prompt {}", has_login_prompt);
         trace!("Status code: {}", status_code);
-        trace!("Deck body: {}", body);
+        trace!("Body: {}", body);
         match (status_code, has_login_prompt) {
             (200, false) => info!("Login successful."),
             (200, true) => error!("Your sessionid is invalid. Update it to the one you currently use in your browser and try again."),

@@ -10,10 +10,13 @@ auto_open = true
 ### if this option is not set, it will not add cards automatically
 # auto_add = 0
 
-### TODO add description
+### uncomment this option to automatically add cards added via jpdb-connect to
+### the front of your review queue (FORQ)
+### it will work even if the card is locked
+### it won't work if the card is suspendend or not in any deck (but auto_add helps here)
 # auto_forq = true
 
-### TODO add description
+### works like auto_forq except that it unlocks the card
 # auto_unlock = true
 
 ### for debugging and development purposes

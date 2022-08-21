@@ -54,7 +54,7 @@ pub async fn send_request(service: &mut BufferedService, req: Request) -> Result
         .map_err(|e| anyhow!("{e}")) // we use this mapping to make our error type sized
 }
 
-fn abs_url(rel: impl Display) -> String {
+pub fn abs_url(rel: impl Display) -> String {
     format!("{}{}{}", URL_PREFIX, DOMAIN, rel)
 }
 
