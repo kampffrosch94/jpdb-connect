@@ -4,7 +4,6 @@ use anyhow::{anyhow, Context as AnyhowContext, Result};
 use log::*;
 use reqwest::header::HeaderValue;
 use reqwest::{Request, Response};
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::pin::Pin;
@@ -67,7 +66,7 @@ pub async fn get_request(service: &mut BufferedService, rel_url: &str) -> Result
 pub async fn form_request(
     service: &mut BufferedService,
     rel_url: &str,
-    payload: HashMap<&str, String>,
+    payload: impl serde::Serialize,
 ) -> Result<Response> {
     let url = abs_url(rel_url);
     let mut req = Request::new(reqwest::Method::POST, reqwest::Url::parse(&url)?);
@@ -157,11 +156,12 @@ impl VocabCard<'_> {
     ) -> Result<()> {
         let vocab_id = self.find_id()?;
         let add_url = format!("/deck/{}/add", deck_id);
-        let mut payload = HashMap::new();
-        payload.insert("v", vocab_id.v);
-        payload.insert("r", vocab_id.r);
-        payload.insert("s", vocab_id.s);
-        payload.insert("origin", origin.to_string());
+        let payload: [(&str, &str); 4] = [
+            ("v", &vocab_id.v),
+            ("r", &vocab_id.r),
+            ("s", &vocab_id.s),
+            ("origin", origin),
+        ];
 
         let res = form_request(service, &add_url, payload)
             .await
@@ -177,10 +177,11 @@ impl VocabCard<'_> {
 
     async fn forq(&self, service: &mut BufferedService, origin: &str) -> Result<()> {
         let vocab_id = self.find_id()?;
-        let mut payload = HashMap::new();
-        payload.insert("v", vocab_id.v);
-        payload.insert("s", vocab_id.s);
-        payload.insert("origin", origin.to_string());
+        let payload: [(&str, &str); 3] = [
+            ("v", &vocab_id.v),
+            ("s", &vocab_id.s),
+            ("origin", origin),
+        ];
         let res = form_request(service, "/prioritize", payload)
             .await
             .context("forq request")?;
@@ -194,10 +195,11 @@ impl VocabCard<'_> {
 
     async fn force_unlock(&self, service: &mut BufferedService, origin: &str) -> Result<()> {
         let vocab_id = self.find_id()?;
-        let mut payload = HashMap::new();
-        payload.insert("v", vocab_id.v);
-        payload.insert("s", vocab_id.s);
-        payload.insert("origin", origin.to_string());
+        let payload: [(&str, &str); 3] = [
+            ("v", &vocab_id.v),
+            ("s", &vocab_id.s),
+            ("origin", origin),
+        ];
         let res = form_request(service, "/force-unlock", payload)
             .await
             .context("force-unlock request")?;
