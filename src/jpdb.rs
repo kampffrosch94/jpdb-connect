@@ -128,6 +128,10 @@ impl JPDBConnection {
                     info!("FORQing: {}", abs_url(detail_url));
                     vocab.forq(&mut self.service, &detail_url).await?;
                 }
+                if self.config.auto_forget {
+                    info!("Mark unknown: {}", abs_url(detail_url));
+                    vocab.mark_unknown(&mut self.service, &detail_url).await?;
+                }
             } else {
                 if self.config.auto_add.is_some() || self.config.auto_forq {
                     error!("Card can not be handled automatically, because it's detail page can not be found.");
@@ -177,11 +181,8 @@ impl VocabCard<'_> {
 
     async fn forq(&self, service: &mut BufferedService, origin: &str) -> Result<()> {
         let vocab_id = self.find_id()?;
-        let payload: [(&str, &str); 3] = [
-            ("v", &vocab_id.v),
-            ("s", &vocab_id.s),
-            ("origin", origin),
-        ];
+        let payload: [(&str, &str); 3] =
+            [("v", &vocab_id.v), ("s", &vocab_id.s), ("origin", origin)];
         let res = form_request(service, "/prioritize", payload)
             .await
             .context("forq request")?;
@@ -195,11 +196,8 @@ impl VocabCard<'_> {
 
     async fn force_unlock(&self, service: &mut BufferedService, origin: &str) -> Result<()> {
         let vocab_id = self.find_id()?;
-        let payload: [(&str, &str); 3] = [
-            ("v", &vocab_id.v),
-            ("s", &vocab_id.s),
-            ("origin", origin),
-        ];
+        let payload: [(&str, &str); 3] =
+            [("v", &vocab_id.v), ("s", &vocab_id.s), ("origin", origin)];
         let res = form_request(service, "/force-unlock", payload)
             .await
             .context("force-unlock request")?;
@@ -207,6 +205,21 @@ impl VocabCard<'_> {
         if !status.is_success() && !status.is_redirection() {
             debug!("Error body: {}", res.text().await.unwrap_or_default());
             return Err(anyhow!("force unlock failed, status: {}", status.as_u16()));
+        }
+        Ok(())
+    }
+
+    async fn mark_unknown(&self, service: &mut BufferedService, origin: &str) -> Result<()> {
+        let vocab_id = self.find_id()?;
+        let payload: [(&str, &str); 3] =
+            [("v", &vocab_id.v), ("s", &vocab_id.s), ("origin", origin)];
+        let res = form_request(service, "/mark-as-not-known", payload)
+            .await
+            .context("force-unlock request")?;
+        let status = res.status();
+        if !status.is_success() && !status.is_redirection() {
+            debug!("Error body: {}", res.text().await.unwrap_or_default());
+            return Err(anyhow!("mark unknown failed, status: {}", status.as_u16()));
         }
         Ok(())
     }

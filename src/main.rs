@@ -24,6 +24,8 @@ pub struct Config {
     pub auto_forq: bool,
     #[serde(default)]
     pub auto_unlock: bool,
+    #[serde(default)]
+    pub auto_forget: bool,
     pub log_level: Option<Level>,
 }
 
@@ -53,13 +55,22 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
     info!("Auto add card to deck: {}", should_auto_add);
     info!("Auto FORQ: {}", config.auto_forq);
     info!("Auto unlock: {}", config.auto_unlock);
+    info!("Auto forget: {}", config.auto_forget);
 
-    if !config.auto_open && !should_auto_add && !config.auto_forq && !config.auto_unlock {
+    if !config.auto_open
+        && !should_auto_add
+        && !config.auto_forq
+        && !config.auto_unlock
+        && !config.auto_forget
+    {
         warn!("In this configuration jpdb-connect does not do anything.");
     }
 
     let test_login = config.session_id.is_some()
-        && (config.auto_add.is_some() || config.auto_forq || config.auto_unlock);
+        && (config.auto_add.is_some()
+            || config.auto_forq
+            || config.auto_unlock
+            || config.auto_forget);
     if test_login {
         let response = client
             .get(if let Some(deck_id) = config.auto_add {

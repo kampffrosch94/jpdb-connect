@@ -19,5 +19,11 @@ auto_open = true
 ### works like auto_forq except that it unlocks the card
 # auto_unlock = true
 
+
+### automatically marks card as forgotten
+### this inserts a failed review for the card
+### and removes it from all decks which are marked as known
+# auto_forget = true
+
 ### for debugging and development purposes
 # log_level = "Trace"
