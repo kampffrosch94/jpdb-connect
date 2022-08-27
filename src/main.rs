@@ -58,7 +58,6 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
         warn!("In this configuration jpdb-connect does not do anything.");
     }
 
-    // TODO alternative login check for when auto_add is not enabled
     let test_login = config.session_id.is_some()
         && (config.auto_add.is_some() || config.auto_forq || config.auto_unlock);
     if test_login {
@@ -200,7 +199,6 @@ async fn handle_action(action: &AnkiConnectAction, mut jpdb: JPDBConnection) -> 
             Response::error("unsupported")
         }
         "canAddNotes" => {
-            // TODO return vec of bools
             let _v = action
                 .params
                 .as_ref()
