@@ -225,8 +225,6 @@ async fn handle_action(
                 .unwrap_or_else(|e| Response::error(e.to_string()))
         }
         "guiBrowse" => {
-            // TODO open browser
-            // action.params.query = "nid:1234"
             let cache = cache.lock().await;
             if let Some(ref open_url) = cache.last_open {
                 match open::that(open_url)
@@ -254,15 +252,15 @@ async fn handle_action(
                 .map(|_| "true".to_string())
                 .collect::<Vec<String>>()
                 .join(", ");
-            warn!("WIP");
+            warn!("Turn off duplicate detection or yomichan + jpdb-connect won't work.");
             //format!(r#"[{}]"#, v)
-            Response::error("unsupported")
+            Response::error("duplicate detection")
         }
         _ => {
             // multi
             // findnotes
             warn!("unsupported action {}", action.action);
-            Response::error("unsupported")
+            Response::error("unsupported action")
         }
     }
 }
