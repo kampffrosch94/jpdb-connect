@@ -2,6 +2,7 @@ mod anki_connect;
 mod jpdb;
 mod parsing;
 
+use std::sync::Arc;
 use std::time::Duration;
 use tower::ServiceBuilder;
 
@@ -11,6 +12,7 @@ use crate::parsing::has_login_prompt;
 use anyhow::{Context, Result};
 use log::*;
 use reqwest::cookie::Jar;
+use tokio::sync::Mutex;
 use warp::hyper::body::Bytes;
 use warp::Filter;
 
@@ -27,6 +29,10 @@ pub struct Config {
     #[serde(default)]
     pub auto_forget: bool,
     pub log_level: Option<Level>,
+}
+
+pub struct Cache {
+    last_open: Option<String>,
 }
 
 fn read_config() -> Result<Config> {
@@ -149,17 +155,20 @@ async fn main() -> Result<()> {
 
     let jpdb = JPDBConnection { service, config };
 
+    let cache = Arc::new(Mutex::new(Cache { last_open: None }));
+
     let bytes = warp::any()
         .and(warp::body::bytes())
         .then(move |body: Bytes| {
             let jpdb = jpdb.clone();
+            let mut cache = cache.clone();
             async move {
                 let s: String = String::from_utf8(body.slice(..).to_vec()).unwrap();
                 trace!("Request received:");
                 trace!("{}", s);
                 let a: AnkiConnectAction = serde_json::from_str(&s).unwrap();
 
-                let answer = &handle_action(&a, jpdb).await;
+                let answer = &handle_action(&a, jpdb, &mut cache).await;
                 let r = if a.version == 2 {
                     answer.version_downgrade()
                 } else {
@@ -179,7 +188,11 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn handle_action(action: &AnkiConnectAction, mut jpdb: JPDBConnection) -> Response {
+async fn handle_action(
+    action: &AnkiConnectAction,
+    mut jpdb: JPDBConnection,
+    cache: &mut Arc<Mutex<Cache>>,
+) -> Response {
     debug!("{}", &action.action);
     match action.action.as_str() {
         "version" => Response::result(6),
@@ -195,8 +208,15 @@ async fn handle_action(action: &AnkiConnectAction, mut jpdb: JPDBConnection) -> 
                 .as_ref()
                 .unwrap()
                 .fields;
-            jpdb.add_note(field)
-                .await
+            let result = jpdb.add_note(field).await;
+            {
+                let mut cache = cache.lock().await;
+                cache.last_open = match result {
+                    Ok(ref s) => Some(s.clone()),
+                    Err(_) => None,
+                }
+            }
+            result
                 .map(|_| Response::result(1234)) // TODO card id
                 .map_err(|e| {
                     error!("{}", e.backtrace());
@@ -207,7 +227,20 @@ async fn handle_action(action: &AnkiConnectAction, mut jpdb: JPDBConnection) -> 
         "guiBrowse" => {
             // TODO open browser
             // action.params.query = "nid:1234"
-            Response::error("unsupported")
+            let cache = cache.lock().await;
+            if let Some(ref open_url) = cache.last_open {
+                match open::that(open_url)
+                    .map(|_| Response::result(true))
+                    .map_err(|e| {
+                        error!("{}", e);
+                        Response::error(e.to_string())
+                    }) {
+                    Ok(it) => it,
+                    Err(it) => it,
+                }
+            } else {
+                Response::error("Can't open nothing")
+            }
         }
         "canAddNotes" => {
             let _v = action

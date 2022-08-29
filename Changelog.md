@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - auto_forget option: automatically mark added card as unknown
+- open a card in browser by clicking "View added note (alt-v)" after adding it in yomichan
 
 
 ## [0.4.1] - 2022-08-21

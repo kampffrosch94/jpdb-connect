@@ -80,7 +80,7 @@ pub async fn form_request(
 }
 
 impl JPDBConnection {
-    pub async fn add_note(&mut self, s: &anki_connect::Fields) -> Result<()> {
+    pub async fn add_note(&mut self, s: &anki_connect::Fields) -> Result<String> {
         debug!("add W='{}' R='{}' S='{}'", s.word, s.reading, s.sentence);
 
         let url = format!("https://jpdb.io/search?q={}&lang=english#a", s.word);
@@ -92,15 +92,15 @@ impl JPDBConnection {
         let body = &res.text().await?;
         let detail_url = parsing::find_detail_url(body, &s.word, &s.reading);
 
+        let open_url = if let Ok(ref rel_url) = &detail_url {
+            format!("{}{}{}", URL_PREFIX, DOMAIN, rel_url)
+        } else {
+            info!("Can't find details page for: {}", s.word);
+            url.into()
+        };
         if self.config.auto_open {
-            let url = if let Ok(ref rel_url) = &detail_url {
-                format!("{}{}{}", URL_PREFIX, DOMAIN, rel_url)
-            } else {
-                info!("Can't find details page for: {}", s.word);
-                url.into()
-            };
-            info!("Opening: {}", url);
-            open::that(&url)?;
+            info!("Opening: {}", open_url);
+            open::that(&open_url)?;
         }
 
         if self.config.session_id.is_some() {
@@ -139,7 +139,7 @@ impl JPDBConnection {
                 }
             }
         }
-        Ok(())
+        Ok(open_url)
     }
 }
 
