@@ -132,6 +132,10 @@ impl JPDBConnection {
                     info!("Mark unknown: {}", abs_url(detail_url));
                     vocab.mark_unknown(&mut self.service, &detail_url).await?;
                 }
+                if self.config.add_mined_sentences {
+                    info!("Add custom sentence: {}", abs_url(detail_url));
+                    vocab.set_custom_sentence(&mut self.service, &s.sentence).await?;
+                }
             } else {
                 if self.config.auto_add.is_some() || self.config.auto_forq {
                     error!("Card can not be handled automatically, because it's detail page can not be found.");
@@ -175,6 +179,27 @@ impl VocabCard<'_> {
                 "Add to deck failed, status: {}",
                 res.status().as_u16()
             ));
+        }
+        Ok(())
+    }
+
+    async fn set_custom_sentence(
+        &self,
+        service: &mut BufferedService,
+        sentence: &str,
+    ) -> Result<()> {
+        let vocab_id = self.find_id()?;
+        let VocabId { v, s, r } = vocab_id;
+        let edit_sentence_url = format!("/edit-shown-sentence?v={}&s={}&r={}", v, s, r);
+        let payload: [(&str, &str); 2] = 
+            [("sentence", sentence), ("translation", "")];
+        let res = form_request(service, &edit_sentence_url, payload)
+            .await
+            .context("set custom sentence request")?;
+        let status = res.status();
+        if !status.is_success() && !status.is_redirection() {
+            debug!("Error body: {}", res.text().await.unwrap_or_default());
+            return Err(anyhow!("Adding custom sentence failed, status: {}", status.as_u16()));
         }
         Ok(())
     }

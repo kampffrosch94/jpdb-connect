@@ -25,5 +25,7 @@ auto_open = true
 ### and removes it from all decks which are marked as known
 # auto_forget = true
 
+# add_mined_sentences = true
+
 ### for debugging and development purposes
 # log_level = "Trace"
