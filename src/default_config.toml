@@ -25,6 +25,12 @@ auto_open = true
 ### and removes it from all decks which are marked as known
 # auto_forget = true
 
+### automatically add the sentence sent via yomichan to the jpdb card
+### Be aware that you can only have one custom example sentence per card.
+### If there already is one, it will be overwritten.
+### At the moment this option will only work if the card and the mined
+### sentence share the same exact spelling for the added word.
+### For example if you add 此れ while the sentence uses これ it will not work.
 # add_mined_sentences = true
 
 ### for debugging and development purposes
