@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - port option: set the port jpdb-connect should listen to (default is 3030 like before)
 ### Fixed
 - improve error message when duplicate detection is on
+- auto features not working with kana only cards
 
 
 ## [0.4.1] - 2022-08-21
