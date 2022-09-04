@@ -29,6 +29,8 @@ pub struct Config {
     #[serde(default)]
     pub auto_forget: bool,
     pub log_level: Option<Level>,
+    #[serde(default)]
+    pub add_mined_sentences: bool,
 }
 
 pub struct Cache {
@@ -62,12 +64,14 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
     info!("Auto FORQ: {}", config.auto_forq);
     info!("Auto unlock: {}", config.auto_unlock);
     info!("Auto forget: {}", config.auto_forget);
+    info!("Add mined sentences: {}", config.add_mined_sentences);
 
     if !config.auto_open
         && !should_auto_add
         && !config.auto_forq
         && !config.auto_unlock
         && !config.auto_forget
+        && !config.add_mined_sentences
     {
         warn!("In this configuration jpdb-connect does not do anything.");
     }
@@ -76,7 +80,8 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
         && (config.auto_add.is_some()
             || config.auto_forq
             || config.auto_unlock
-            || config.auto_forget);
+            || config.auto_forget
+            || config.add_mined_sentences);
     if test_login {
         let response = client
             .get(if let Some(deck_id) = config.auto_add {
