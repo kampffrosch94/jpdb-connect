@@ -31,6 +31,7 @@ pub struct Config {
     pub log_level: Option<Level>,
     #[serde(default)]
     pub add_mined_sentences: bool,
+    pub port: Option<u16>,
 }
 
 pub struct Cache {
@@ -139,6 +140,7 @@ fn setup_logger(config: &Config) -> Result<()> {
 async fn main() -> Result<()> {
     let config = read_config().context("Config file can not be loaded.")?;
     setup_logger(&config)?;
+    let port = config.port.unwrap_or(3030);
 
     let mut client = reqwest::Client::builder();
     if let Some(ref sid) = config.session_id {
@@ -188,7 +190,7 @@ async fn main() -> Result<()> {
     warp::serve(bytes.with(warp::log::custom(|info| {
         debug!("{} {} {}", info.method(), info.path(), info.status(),);
     })))
-    .run(([127, 0, 0, 1], 3030))
+    .run(([127, 0, 0, 1], port))
     .await;
     Ok(())
 }

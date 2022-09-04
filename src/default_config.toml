@@ -33,5 +33,8 @@ auto_open = true
 ### For example if you add 此れ while the sentence uses これ it will not work.
 # add_mined_sentences = true
 
+### change the port jpdb-connect uses
+# port = 3030
+
 ### for debugging and development purposes
 # log_level = "Trace"

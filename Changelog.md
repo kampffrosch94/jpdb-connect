@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - auto_forget option: automatically mark added card as unknown
 - open a card in browser by clicking "View added note (alt-v)" after adding it in yomichan
 - add_mined_sentences option: add example sentence for selected card (thanks @himbosatsu)
+- port option: set the port jpdb-connect should listen to (default is 3030 like before)
 ### Fixed
 - improve error message when duplicate detection is on
 
