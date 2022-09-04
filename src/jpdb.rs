@@ -139,7 +139,7 @@ impl JPDBConnection {
                         .await?;
                 }
             } else {
-                if self.config.auto_add.is_some() || self.config.auto_forq {
+                if self.config.any_login_or_detail_options() {
                     error!("Card can not be handled automatically, because it's detail page can not be found.");
                     return Err(anyhow::anyhow!("can't find card"));
                 }

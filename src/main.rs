@@ -34,6 +34,18 @@ pub struct Config {
     pub port: Option<u16>,
 }
 
+impl Config {
+    /// true if any options that need the user to be logged in and to access the detail page
+    /// are enabled
+    fn any_login_or_detail_options(&self) -> bool {
+        self.auto_add.is_some()
+            || self.auto_forq
+            || self.auto_unlock
+            || self.auto_forget
+            || self.add_mined_sentences
+    }
+}
+
 pub struct Cache {
     last_open: Option<String>,
 }
@@ -67,22 +79,11 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
     info!("Auto forget: {}", config.auto_forget);
     info!("Add mined sentences: {}", config.add_mined_sentences);
 
-    if !config.auto_open
-        && !should_auto_add
-        && !config.auto_forq
-        && !config.auto_unlock
-        && !config.auto_forget
-        && !config.add_mined_sentences
-    {
+    if !config.auto_open && !config.any_login_or_detail_options() {
         warn!("In this configuration jpdb-connect does not do anything.");
     }
 
-    let test_login = config.session_id.is_some()
-        && (config.auto_add.is_some()
-            || config.auto_forq
-            || config.auto_unlock
-            || config.auto_forget
-            || config.add_mined_sentences);
+    let test_login = config.session_id.is_some() && config.any_login_or_detail_options();
     if test_login {
         let response = client
             .get(if let Some(deck_id) = config.auto_add {
