@@ -1,7 +1,9 @@
 ### if set to true will open the detail view of the vocab card
 auto_open = true
 
-### The following config options will need you to be logged in
+##################################################################
+### The following config options will need you to be logged in ###
+##################################################################
 
 ### get the sid cookie from your browser and paste it here, then uncomment the option
 ### WARNING:
@@ -38,8 +40,19 @@ auto_open = true
 ### For example if you add 此れ while the sentence uses これ it will not work.
 # add_mined_sentences = true
 
+#################################################################
+### the following options are for power users and developers ####
+#################################################################
+
+### change the ip jpdb-connect binds to
+### default is 127.0.0.1
+# ip = "127.0.0.1"
+
 ### change the port jpdb-connect uses
+### default is 3030
 # port = 3030
 
 ### for debugging and development purposes
+# loglevels are: Trace, Debug, Info, Warn, Error
+# default level is Info
 # log_level = "Trace"

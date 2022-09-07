@@ -2,6 +2,8 @@ mod anki_connect;
 mod jpdb;
 mod parsing;
 
+use std::net::IpAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tower::ServiceBuilder;
@@ -32,6 +34,7 @@ pub struct Config {
     #[serde(default)]
     pub add_mined_sentences: bool,
     pub port: Option<u16>,
+    pub ip: Option<String>,
 }
 
 impl Config {
@@ -142,6 +145,11 @@ async fn main() -> Result<()> {
     let config = read_config().context("Config file can not be loaded.")?;
     setup_logger(&config)?;
     let port = config.port.unwrap_or(3030);
+    let ip = config
+        .ip
+        .as_ref()
+        .and_then(|ip| IpAddr::from_str(&ip).ok())
+        .unwrap_or([127, 0, 0, 1].into());
 
     let mut client = reqwest::Client::builder();
     if let Some(ref sid) = config.session_id {
@@ -191,7 +199,7 @@ async fn main() -> Result<()> {
     warp::serve(bytes.with(warp::log::custom(|info| {
         debug!("{} {} {}", info.method(), info.path(), info.status(),);
     })))
-    .run(([127, 0, 0, 1], port))
+    .run((ip, port))
     .await;
     Ok(())
 }
