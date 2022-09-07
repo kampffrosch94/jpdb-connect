@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2022-09-07
+### Added
+- ip option: set the ip address jpdb-connect binds to (default is 127.0.0.1)
+### Fixed
+- improved documentation of options, don't share your session_id with other people :| 
+
 ## [0.5.0] - 2022-09-05
 ### Added
 - auto_forget option: automatically mark added card as unknown
