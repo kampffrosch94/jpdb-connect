@@ -1,8 +1,13 @@
 ### if set to true will open the detail view of the vocab card
 auto_open = true
 
-### the following config options will need you to be logged in
+### The following config options will need you to be logged in
+
 ### get the sid cookie from your browser and paste it here, then uncomment the option
+### WARNING:
+### Anyone who knows the value below can log into jpdb as you and use your account,
+### which may let them find out your email address, delete your decks, and so on.
+### Please hide it or remove it when sharing your configuration file with someone else.
 # session_id = "paste your sid value here"
 
 ### set this option to the id of the deck where you want vocab cards added automatically
