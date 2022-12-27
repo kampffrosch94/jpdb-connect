@@ -20,4 +20,4 @@ chumsky = {version= "0.8.0", default_features = false}
 serde_urlencoded = "0.7.1"
 log = {version = "0.4", features = ["serde"]}
 fern = "0.6.1"
-chrono = "0.4"
+chrono = {version = "0.4", default_features = false, features = ["clock"]}
