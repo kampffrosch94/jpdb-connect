@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- fix for time function related cve on linux. I don't think this was particularly
+relevant but I bothered anyways.
 
 ## [0.6.0] - 2022-09-07
 ### Added
