@@ -15,7 +15,7 @@ Set up Yomichan to look for a server at "localhost:3030".
 
 ![](doc/yomichansetting1.png)
 
-"Check for card duplicates" should be *off*.
+"Check for card duplicates" should be *off*. (the setting is only visible when advanced settings are turned on in yomichan)
 
 Click on "configure Anki card format" and set it up like this:
 
