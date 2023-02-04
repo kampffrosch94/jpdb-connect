@@ -28,3 +28,8 @@ jpdb_connect will create a configuration file in the directory the binary is sto
 Most of the options are commented out. They have comments describing them.
 
 You can see the default config file [here](src/default_config.toml).
+
+
+# Build Instructions
+
+On normal systems `cargo build` should be sufficient.
