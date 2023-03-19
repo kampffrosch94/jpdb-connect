@@ -228,7 +228,7 @@ impl VocabCard<'_> {
         // TODO: Add option to retain original definitions
         // The api overwrites the full list of shown definitions
         // Doing this would require fetching the list first
-        info!("custom def:\n{}", definition);
+        debug!("custom definition: {}", definition);
         if definition.len() < 1 {
             info!("Definition field was empty. Will not update definitions.");
             return Ok(())
