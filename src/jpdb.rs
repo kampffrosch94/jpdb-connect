@@ -197,7 +197,7 @@ impl VocabCard<'_> {
         service: &mut BufferedService,
         sentence: &str,
     ) -> Result<()> {
-        info!("custom sen:\n{}", sentence);
+        debug!("custom sentence: {}", sentence);
         if sentence.len() < 1 {
             info!("Sentence field was empty. Will not set custom sentence.");
             return Ok(())
