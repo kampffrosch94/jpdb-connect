@@ -1,3 +1,7 @@
+#################################################################
+### Changes require restarting the application to take effect ###
+#################################################################
+
 ### if set to true will open the detail view of the vocab card
 auto_open = true
 
@@ -38,7 +42,15 @@ auto_open = true
 ### At the moment this option will only work if the card and the mined
 ### sentence share the same exact spelling for the added word.
 ### For example if you add 此れ while the sentence uses これ it will not work.
+### If no sentence is provided, updating will be skipped.
 # add_mined_sentences = true
+
+### automatically add the definition sent via yomichan as a custom definition
+### If the definition provided is empty, nothing will happen and the
+### default definitions will be left in place. Otherwise, this setting will
+### disable all default definitions leaving only the custom definition shown.
+### This will overwrite any custom definition that may have been previously added to the card.
+# add_custom_definition = true
 
 #################################################################
 ### the following options are for power users and developers ####
