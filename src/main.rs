@@ -216,8 +216,8 @@ async fn handle_action(
     debug!("{}", &action.action);
     match action.action.as_str() {
         "version" => Response::result(6),
-        "deckNames" => Response::result(["jpdbx"]),
-        "modelNames" => Response::result(["jpdbx"]),
+        "deckNames" => Response::result(["jpdb"]),
+        "modelNames" => Response::result(["jpdb", "Select to refresh"]),
         "modelFieldNames" => Response::result(["word", "reading", "sentence", "definition"]),
         "addNote" => {
             let field = &action
