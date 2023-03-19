@@ -81,7 +81,7 @@ pub async fn form_request(
 
 impl JPDBConnection {
     pub async fn add_note(&mut self, s: &anki_connect::Fields) -> Result<String> {
-        debug!("add W='{}' R='{}' S='{}' D='{}'", s.word, s.reading, s.sentence, s.definition);
+        debug!("add W='{}' R='{}' S='{}' D='{}'", s.word, s.reading, s.sentence, s.definition.as_ref().unwrap_or(&"".to_string()));
 
         let url = format!("https://jpdb.io/search?q={}&lang=english#a", s.word);
 
@@ -135,10 +135,12 @@ impl JPDBConnection {
                         .await?;
                 }
                 if self.config.add_custom_definition {
-                    info!("Add custom definition: {}", abs_url(detail_url));
-                    vocab
-                        .set_custom_definition(&mut self.service, &s.definition)
-                        .await?;
+                    if let Some(definition) = &s.definition {
+                        info!("Add custom definition: {}", abs_url(detail_url));
+                        vocab
+                            .set_custom_definition(&mut self.service, &definition)
+                            .await?;
+                    }
                 }
             } else {
                 if self.config.any_login_or_detail_options() {
