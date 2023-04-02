@@ -85,7 +85,7 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
     info!("Auto forget: {}", config.auto_forget);
     info!("Add mined sentences: {}", config.add_mined_sentences);
     info!("Add custom definition: {}", config.add_custom_definition);
-    
+
     if !config.auto_open && !config.any_login_or_detail_options() {
         warn!("In this configuration jpdb-connect does not do anything.");
     }

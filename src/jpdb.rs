@@ -81,7 +81,13 @@ pub async fn form_request(
 
 impl JPDBConnection {
     pub async fn add_note(&mut self, s: &anki_connect::Fields) -> Result<String> {
-        debug!("add W='{}' R='{}' S='{}' D='{}'", s.word, s.reading, s.sentence, s.definition.as_ref().unwrap_or(&"".to_string()));
+        debug!(
+            "add W='{}' R='{}' S='{}' D='{}'",
+            s.word,
+            s.reading,
+            s.sentence,
+            s.definition.as_ref().unwrap_or(&"".to_string())
+        );
 
         let url = format!("https://jpdb.io/search?q={}&lang=english#a", s.word);
 
@@ -202,7 +208,7 @@ impl VocabCard<'_> {
         debug!("custom sentence: {}", sentence);
         if sentence.len() < 1 {
             info!("Sentence field was empty. Will not set custom sentence.");
-            return Ok(())
+            return Ok(());
         }
         let vocab_id = self.find_id()?;
         let VocabId { v, s, r } = vocab_id;
@@ -223,8 +229,8 @@ impl VocabCard<'_> {
     }
 
     async fn set_custom_definition(
-        &self, 
-        service: &mut BufferedService, 
+        &self,
+        service: &mut BufferedService,
         definition: &str,
     ) -> Result<()> {
         // TODO: Add option to retain original definitions
@@ -233,7 +239,7 @@ impl VocabCard<'_> {
         debug!("custom definition: {}", definition);
         if definition.len() < 1 {
             info!("Definition field was empty. Will not update definitions.");
-            return Ok(())
+            return Ok(());
         }
         let vocab_id = self.find_id()?;
         let VocabId { v, s, r } = vocab_id;
@@ -241,8 +247,8 @@ impl VocabCard<'_> {
         // TODO:
         // If no language-xxx field is sent, the update fails silently, so we must send some.
         // I don't want to default to only english in case that causes problems for some users
-        // I don't know what happens if a word is missing a definition, say hungarian
-        // If language-hungarian is set to 1 and there is no hungarian definition there may be an error
+        // I don't know what happens if a word is missing a definition server side, say hungarian,
+        // If language-hungarian is set to 1 and there is no existing hungarian definition there may be an error
         let payload: [(&str, &str); 8] = [
             ("language-select", "default"),
             ("language-english", "1"),
@@ -251,7 +257,7 @@ impl VocabCard<'_> {
             ("language-spanish", "1"),
             ("language-french", "1"),
             ("language-hungarian", "1"),
-            ("custom-definition", definition)
+            ("custom-definition", definition),
         ];
         let res = form_request(service, &edit_definition_url, payload)
             .await
