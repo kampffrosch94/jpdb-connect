@@ -33,6 +33,8 @@ pub struct Config {
     pub log_level: Option<Level>,
     #[serde(default)]
     pub add_mined_sentences: bool,
+    #[serde(default)]
+    pub add_custom_definition: bool,
     pub port: Option<u16>,
     pub ip: Option<String>,
 }
@@ -46,6 +48,7 @@ impl Config {
             || self.auto_unlock
             || self.auto_forget
             || self.add_mined_sentences
+            || self.add_custom_definition
     }
 }
 
@@ -81,6 +84,7 @@ async fn validate_config(config: &Config, client: &reqwest::Client) -> Result<()
     info!("Auto unlock: {}", config.auto_unlock);
     info!("Auto forget: {}", config.auto_forget);
     info!("Add mined sentences: {}", config.add_mined_sentences);
+    info!("Add custom definition: {}", config.add_custom_definition);
 
     if !config.auto_open && !config.any_login_or_detail_options() {
         warn!("In this configuration jpdb-connect does not do anything.");
@@ -213,8 +217,8 @@ async fn handle_action(
     match action.action.as_str() {
         "version" => Response::result(6),
         "deckNames" => Response::result(["jpdb"]),
-        "modelNames" => Response::result(["jpdb"]),
-        "modelFieldNames" => Response::result(["word", "reading", "sentence"]),
+        "modelNames" => Response::result(["jpdb", "Select to refresh"]),
+        "modelFieldNames" => Response::result(["word", "reading", "sentence", "definition"]),
         "addNote" => {
             let field = &action
                 .params

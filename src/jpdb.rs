@@ -81,7 +81,13 @@ pub async fn form_request(
 
 impl JPDBConnection {
     pub async fn add_note(&mut self, s: &anki_connect::Fields) -> Result<String> {
-        debug!("add W='{}' R='{}' S='{}'", s.word, s.reading, s.sentence);
+        debug!(
+            "add W='{}' R='{}' S='{}' D='{}'",
+            s.word,
+            s.reading,
+            s.sentence,
+            s.definition.as_ref().unwrap_or(&"".to_string())
+        );
 
         let url = format!("https://jpdb.io/search?q={}&lang=english#a", s.word);
 
@@ -98,10 +104,6 @@ impl JPDBConnection {
             info!("Can't find details page for: {}", s.word);
             url.into()
         };
-        if self.config.auto_open {
-            info!("Opening: {}", open_url);
-            open::that(&open_url)?;
-        }
 
         if self.config.session_id.is_some() {
             if let Ok(ref detail_url) = detail_url {
@@ -138,12 +140,25 @@ impl JPDBConnection {
                         .set_custom_sentence(&mut self.service, &s.sentence)
                         .await?;
                 }
+                if self.config.add_custom_definition {
+                    if let Some(definition) = &s.definition {
+                        info!("Add custom definition: {}", abs_url(detail_url));
+                        vocab
+                            .set_custom_definition(&mut self.service, &definition)
+                            .await?;
+                    }
+                }
             } else {
                 if self.config.any_login_or_detail_options() {
                     error!("Card can not be handled automatically, because it's detail page can not be found.");
                     return Err(anyhow::anyhow!("can't find card"));
                 }
             }
+        }
+
+        if self.config.auto_open {
+            info!("Opening: {}", open_url);
+            open::that(&open_url)?;
         }
         Ok(open_url)
     }
@@ -190,6 +205,11 @@ impl VocabCard<'_> {
         service: &mut BufferedService,
         sentence: &str,
     ) -> Result<()> {
+        debug!("custom sentence: {}", sentence);
+        if sentence.len() < 1 {
+            info!("Sentence field was empty. Will not set custom sentence.");
+            return Ok(());
+        }
         let vocab_id = self.find_id()?;
         let VocabId { v, s, r } = vocab_id;
         let edit_sentence_url = format!("/edit-shown-sentence?v={}&s={}&r={}", v, s, r);
@@ -202,6 +222,51 @@ impl VocabCard<'_> {
             debug!("Error body: {}", res.text().await.unwrap_or_default());
             return Err(anyhow!(
                 "Adding custom sentence failed, status: {}",
+                status.as_u16()
+            ));
+        }
+        Ok(())
+    }
+
+    async fn set_custom_definition(
+        &self,
+        service: &mut BufferedService,
+        definition: &str,
+    ) -> Result<()> {
+        // TODO: Add option to retain original definitions
+        // The api overwrites the full list of shown definitions
+        // Doing this would require fetching the list first
+        debug!("custom definition: {}", definition);
+        if definition.len() < 1 {
+            info!("Definition field was empty. Will not update definitions.");
+            return Ok(());
+        }
+        let vocab_id = self.find_id()?;
+        let VocabId { v, s, r } = vocab_id;
+        let edit_definition_url = format!("/edit_shown_meanings?v={}&s={}&r={}", v, s, r);
+        // TODO:
+        // If no language-xxx field is sent, the update fails silently, so we must send some.
+        // I don't want to default to only english in case that causes problems for some users
+        // I don't know what happens if a word is missing a definition server side, say hungarian,
+        // If language-hungarian is set to 1 and there is no existing hungarian definition there may be an error
+        let payload: [(&str, &str); 8] = [
+            ("language-select", "default"),
+            ("language-english", "1"),
+            ("language-japanese", "1"),
+            ("language-german", "1"),
+            ("language-spanish", "1"),
+            ("language-french", "1"),
+            ("language-hungarian", "1"),
+            ("custom-definition", definition),
+        ];
+        let res = form_request(service, &edit_definition_url, payload)
+            .await
+            .context("set custom definition request")?;
+        let status = res.status();
+        if !status.is_success() && !status.is_redirection() {
+            debug!("Error body: {}", res.text().await.unwrap_or_default());
+            return Err(anyhow!(
+                "Adding custom definition failed, status: {}",
                 status.as_u16()
             ));
         }

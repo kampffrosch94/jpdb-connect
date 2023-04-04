@@ -59,4 +59,5 @@ pub struct Fields {
     pub word: String,
     pub reading: String,
     pub sentence: String,
+    pub definition: Option<String>,
 }
