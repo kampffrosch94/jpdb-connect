@@ -5,15 +5,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.7.0] - 2023-04-07
+### Added
+- add option to mine custom definition from selected text in yomichan. Check the Readme and config for instructions. (thanks @DiscoTiger)
+
 ### Fixed
 - fix for time function related cve on linux. I don't think this was particularly
 relevant but I bothered anyways.
+- mining kana only words from JL works now
 
 ## [0.6.0] - 2022-09-07
 ### Added
 - ip option: set the ip address jpdb-connect binds to (default is 127.0.0.1)
 ### Fixed
-- improved documentation of options, don't share your session_id with other people :| 
+- improved documentation of options, don't share your session_id with other people :|
 
 ## [0.5.0] - 2022-09-05
 ### Added
@@ -42,7 +48,7 @@ relevant but I bothered anyways.
 - logging with log levels, configurable in config file (for debugging purposes)
 
 ### Fixed
-- error messages will pop up in yomi chan now 
+- error messages will pop up in yomi chan now
 
 ## [0.2.0] - 2022-07-31
 ### Added
