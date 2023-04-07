@@ -57,7 +57,7 @@ pub struct Note {
 #[derive(Deserialize, Debug)]
 pub struct Fields {
     pub word: String,
-    pub reading: String,
+    pub reading: Option<String>,
     pub sentence: String,
     pub definition: Option<String>,
 }

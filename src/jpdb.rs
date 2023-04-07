@@ -84,9 +84,9 @@ impl JPDBConnection {
         debug!(
             "add W='{}' R='{}' S='{}' D='{}'",
             s.word,
-            s.reading,
+            s.reading.as_deref().unwrap_or_default(),
             s.sentence,
-            s.definition.as_ref().unwrap_or(&"".to_string())
+            s.definition.as_deref().unwrap_or_default(),
         );
 
         let url = format!("https://jpdb.io/search?q={}&lang=english#a", s.word);
@@ -96,7 +96,8 @@ impl JPDBConnection {
             .await
             .context("search request")?;
         let body = &res.text().await?;
-        let detail_url = parsing::find_detail_url(body, &s.word, &s.reading);
+        let detail_url =
+            parsing::find_detail_url(body, &s.word, s.reading.as_deref().unwrap_or_default());
 
         let open_url = if let Ok(ref rel_url) = &detail_url {
             format!("{}{}{}", URL_PREFIX, DOMAIN, rel_url)
