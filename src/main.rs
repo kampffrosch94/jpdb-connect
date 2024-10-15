@@ -276,6 +276,10 @@ async fn handle_action(
             //format!(r#"[{}]"#, v)
             Response::error("duplicate detection")
         }
+        "storeMediaFile" => {
+            warn!("unsupported action {}", action.action);
+            Response::result("_hello.txt")
+        }
         _ => {
             // multi
             // findnotes
