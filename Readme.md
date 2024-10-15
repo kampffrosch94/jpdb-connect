@@ -1,3 +1,9 @@
+# This project is unmaintained 
+
+I have not been using it myself for way over a year now.
+
+I recommend using https://github.com/max-kamps/jpd-breader instead.
+
 # JPDB-connect
 
 Connect [yomichan](https://github.com/FooSoft/yomichan) with [jpdb](https://jpdb.io) via [anki-connect](https://foosoft.net/projects/anki-connect/) protocol.
